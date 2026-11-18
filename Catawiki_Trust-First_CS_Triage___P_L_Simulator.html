@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catawiki Trust-First CS Triage & P&L Simulator · Marina Riakhovskaya</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            cwBlue: '#0047FF',
+            cwBlueDark: '#1E40AF',
+            cwBlueSoft: '#EFF4FF',
+            cwSlate: '#0F172A',
+            cwMuted: '#475569',
+            cwSurface: '#F8FAFC',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .msg-animate {
+      animation: fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes pulseSubtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .typing-dot {
+      animation: pulseSubtle 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Custom Range Slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #E2E8F0;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0047FF;
+      cursor: pointer;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #1E40AF;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0047FF;
+      cursor: pointer;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
+    }
+
+    /* Clean subtle scrollbars inside chat windows */
+    .chat-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .chat-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-scroll::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Executive Masthead -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-1.5">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold tracking-wider uppercase bg-cwBlueSoft text-cwBlue border border-blue-200">
+              Interactive Product Prototype · Marina Riakhovskaya
+            </span>
+            <span class="text-xs font-medium text-slate-400 hidden sm:inline">Principal PM Case Study · Customer Service</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-cwSlate">
+            Catawiki Trust-First CS Triage &amp; P&amp;L Simulator
+          </h1>
+          <p class="text-xs sm:text-sm text-cwMuted mt-0.5 max-w-3xl">
+            Demonstrating how <span class="font-semibold text-cwSlate">Self-Aware AI</span> eliminates post-auction friction upstream while protecting High-AOV collector trust.
+          </p>
+        </div>
+
+        <!-- View Switcher & Architecture Drawer Toggle -->
+        <div class="flex flex-wrap items-center gap-2 self-start lg:self-center">
+          <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200" role="tablist">
+            <button id="tab-sim" onclick="switchView('sim')" role="tab" aria-selected="true"
+              class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-cwBlue shadow-sm">
+              1. Live Triage Simulator
+            </button>
+            <button id="tab-pnl" onclick="switchView('pnl')" role="tab" aria-selected="false"
+              class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-cwSlate">
+              2. Unit Economics &amp; P&amp;L
+            </button>
+          </div>
+
+          <button id="btn-arch" onclick="toggleArchitecture()"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-300 bg-white text-cwSlate hover:bg-slate-50 transition-all shadow-sm">
+            <svg class="w-4 h-4 text-cwBlue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+            <span>Architecture Logic</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expandable Risk & Emotion Routing Architecture Panel -->
+      <div id="arch-panel" class="hidden mt-4 pt-4 border-t border-slate-200 msg-animate">
+        <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-lg">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400">System Architecture · Risk &amp; Emotion Routing Engine</span>
+              <h3 class="text-sm sm:text-base font-bold text-white">How Self-Aware AI Decides Between Instant Resolution vs. Protected Human Escalation</h3>
+            </div>
+            <button onclick="toggleArchitecture()" class="text-slate-400 hover:text-white text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-800">
+              Close ✕
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
+              <div class="font-mono text-blue-400 font-bold mb-1">01 · CONTEXT INGESTION</div>
+              <p class="text-slate-300 leading-relaxed">Pre-fetches Lot AOV, Buyer/Seller LTV, Carrier Webhook status, and Escrow Payout timer before the first prompt.</p>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
+              <div class="font-mono text-amber-400 font-bold mb-1">02 · RISK &amp; SENTIMENT SCORE</div>
+              <p class="text-slate-300 leading-relaxed">Evaluates dispute severity (damage, authenticity, customs hold) + emotional urgency + chargeback keywords.</p>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
+              <div class="font-mono text-emerald-400 font-bold mb-1">03 · AUTONOMOUS GUARDRAILS</div>
+              <p class="text-slate-300 leading-relaxed">If <span class="text-white font-semibold">AOV &gt; €500</span> or damage detected: triggers instant <span class="text-emerald-300 font-semibold">Escrow Hold</span> &amp; extends buyer claim window automatically.</p>
+            </div>
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
+              <div class="font-mono text-purple-400 font-bold mb-1">04 · ROUTING &amp; CO-PILOT</div>
+              <p class="text-slate-300 leading-relaxed">Routine queries (&lt;€150, clear status) resolve in 1-turn; High-AOV disputes route in &lt;10s with a structured Agent Brief.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: LIVE TRIAGE SIMULATOR (AS-IS vs. TO-BE)                       -->
+    <!-- ===================================================================== -->
+    <section id="view-sim" class="space-y-5">
+
+      <!-- Scenario Selector & Playback Controls Bar -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <!-- Scenario Pills -->
+          <div class="space-y-1.5">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Select Post-Auction VoC Scenario</span>
+            <div class="flex flex-wrap gap-2" id="scenario-pills">
+              <button onclick="selectScenario('A')" id="pill-A"
+                class="scenario-pill text-left px-3.5 py-2.5 rounded-xl border-2 border-cwBlue bg-cwBlueSoft/70 transition-all">
+                <div class="flex items-center gap-2">
+                  <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-red-100 text-red-700">High-AOV · High Risk</span>
+                  <span class="font-mono text-xs font-bold text-cwBlue">€1,450</span>
+                </div>
+                <div class="text-xs sm:text-sm font-bold text-cwSlate mt-0.5">Damaged Vintage Watch — Payout Pending</div>
+              </button>
+
+              <button onclick="selectScenario('B')" id="pill-B"
+                class="scenario-pill text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
+                <div class="flex items-center gap-2">
+                  <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-amber-100 text-amber-800">Cross-Border Friction</span>
+                  <span class="font-mono text-xs font-bold text-slate-600">€420</span>
+                </div>
+                <div class="text-xs sm:text-sm font-bold text-cwSlate mt-0.5">Customs Hold in Spain — Surprise Duty Fee</div>
+              </button>
+
+              <button onclick="selectScenario('C')" id="pill-C"
+                class="scenario-pill text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all">
+                <div class="flex items-center gap-2">
+                  <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase rounded bg-emerald-100 text-emerald-700">Low-Risk · Routine</span>
+                  <span class="font-mono text-xs font-bold text-slate-600">€85</span>
+                </div>
+                <div class="text-xs sm:text-sm font-bold text-cwSlate mt-0.5">Seller Payout Timing — Delivered 48h Ago</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Replay / Simulation Controls -->
+          <div class="flex flex-wrap items-center gap-2 xl:self-end">
+            <button onclick="playSimulation()" id="btn-play"
+              class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-cwBlue text-white hover:bg-cwBlueDark transition-all shadow-sm">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+              </svg>
+              <span>Play Simulation</span>
+            </button>
+            <button onclick="instantView()"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-100 text-cwSlate hover:bg-slate-200 transition-all">
+              <span>Instant View</span>
+            </button>
+            <button onclick="resetSimulation()"
+              class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split-Screen Side-by-Side Comparison -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+
+        <!-- LEFT PANEL: AS-IS (BOT-FIRST DEFLECTION) -->
+        <div class="bg-white rounded-2xl border border-red-200/90 shadow-sm flex flex-col overflow-hidden">
+          <!-- Panel Header -->
+          <div class="px-4 py-3.5 bg-red-50/70 border-b border-red-100 flex items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-600"></span>
+                <span class="text-xs font-extrabold uppercase tracking-wider text-red-700">AS-IS · Generic Bot-First Deflection</span>
+              </div>
+              <p class="text-xs text-slate-600 mt-0.5">Context-blind FAQ loop · Rigid containment before human access</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-100 text-red-800 border border-red-200 shrink-0">
+              Bot Trap Risk
+            </span>
+          </div>
+
+          <!-- Blind Telemetry Strip -->
+          <div class="px-4 py-2 bg-slate-50 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-500">
+            <span>CONTEXT: <strong class="text-red-600">NONE (Unauthenticated)</strong></span>
+            <span>ESCROW GUARD: <strong class="text-red-600">INACTIVE</strong></span>
+            <span>ROUTING: <strong class="text-slate-700">Static Tree</strong></span>
+          </div>
+
+          <!-- Chat Stream (As-Is) -->
+          <div id="chat-asis" class="p-4 space-y-3 flex-1 min-h-[370px] max-h-[440px] overflow-y-auto chat-scroll bg-slate-50/40">
+            <!-- Populated by JS -->
+          </div>
+
+          <!-- Outcome Card (As-Is) -->
+          <div id="outcome-asis" class="p-4 bg-red-50/60 border-t border-red-200">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL: TO-BE (TRUST-FIRST SELF-AWARE TRIAGE) -->
+        <div class="bg-white rounded-2xl border-2 border-cwBlue/30 shadow-sm flex flex-col overflow-hidden">
+          <!-- Panel Header -->
+          <div class="px-4 py-3.5 bg-cwBlueSoft/70 border-b border-blue-100 flex items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                <span class="text-xs font-extrabold uppercase tracking-wider text-cwBlue">TO-BE · Trust-First Self-Aware Triage</span>
+              </div>
+              <p class="text-xs text-slate-600 mt-0.5">Live order telemetry · Automated Escrow Guardrail · Co-Pilot Handoff</p>
+            </div>
+            <span id="tobe-badge" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+              Trust Protected
+            </span>
+          </div>
+
+          <!-- Live Context & Guardrail Telemetry Bar -->
+          <div id="telemetry-bar" class="px-4 py-2 bg-slate-900 text-white border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+            <!-- Populated by JS -->
+          </div>
+
+          <!-- Chat Stream (To-Be) -->
+          <div id="chat-tobe" class="p-4 space-y-3 flex-1 min-h-[370px] max-h-[440px] overflow-y-auto chat-scroll bg-white">
+            <!-- Populated by JS -->
+          </div>
+
+          <!-- Outcome Card (To-Be) -->
+          <div id="outcome-tobe" class="p-4 bg-emerald-50/60 border-t border-emerald-200">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: UNIT ECONOMICS & P&L IMPACT CALCULATOR                        -->
+    <!-- ===================================================================== -->
+    <section id="view-pnl" class="hidden space-y-6">
+
+      <!-- Top Baseline Assumptions Banner -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-cwBlue">Marketplace Unit Economics Model</span>
+            <h2 class="text-lg font-extrabold text-cwSlate">Annual Contribution Margin &amp; Trust Protection Simulator</h2>
+          </div>
+          <button onclick="resetSliders()" class="self-start md:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50">
+            Reset to Recommended Baseline
+          </button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs">
+          <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/70">
+            <span class="text-slate-500 block">Annual CS Contact Volume</span>
+            <span class="font-mono font-bold text-sm text-cwSlate tabular-nums">1,200,000 contacts</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/70">
+            <span class="text-slate-500 block">Avg. Human Ticket Cost</span>
+            <span class="font-mono font-bold text-sm text-cwSlate tabular-nums">€14.50 / ticket</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/70">
+            <span class="text-slate-500 block">AI Self-Serve Resolution Cost</span>
+            <span class="font-mono font-bold text-sm text-cwBlue tabular-nums">€0.35 / resolution</span>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-200/70">
+            <span class="text-slate-500 block">Baseline Chargeback &amp; Churn Exposure</span>
+            <span class="font-mono font-bold text-sm text-cwSlate tabular-nums">€14.2M / yr at risk</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Two-Column Calculator Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Interactive Levers (5 cols) -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+          <div>
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-cwSlate">Product &amp; AI Policy Levers</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Adjust operational parameters to model OpEx savings vs. High-AOV collector protection.</p>
+          </div>
+
+          <!-- Slider 1 -->
+          <div class="space-y-2 pt-1">
+            <div class="flex justify-between items-baseline">
+              <label for="slider-tier1" class="text-xs sm:text-sm font-bold text-cwSlate">1. Routine Tier-1 AI Resolution Rate</label>
+              <span id="val-tier1" class="font-mono text-sm font-extrabold text-cwBlue tabular-nums">52%</span>
+            </div>
+            <input id="slider-tier1" type="range" min="20" max="75" value="52" oninput="recalculatePnL()" />
+            <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+              <span>20% (Conservative)</span>
+              <span>75% (Aggressive)</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-snug">Automates low-risk WISMO, payout timing, and bidding FAQ queries with live order context.</p>
+          </div>
+
+          <hr class="border-slate-100" />
+
+          <!-- Slider 2 -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-baseline">
+              <label for="slider-aov" class="text-xs sm:text-sm font-bold text-cwSlate">2. High-AOV Human Guardrail Threshold</label>
+              <span id="val-aov" class="font-mono text-sm font-extrabold text-cwBlue tabular-nums">€500</span>
+            </div>
+            <input id="slider-aov" type="range" min="150" max="1500" step="50" value="500" oninput="recalculatePnL()" />
+            <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+              <span>€150 (Strict Trust)</span>
+              <span>€1,500 (High Bot Exposure)</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-snug">Disputes above this lot value bypass bot containment immediately with an Escrow Hold &amp; Co-Pilot brief.</p>
+          </div>
+
+          <hr class="border-slate-100" />
+
+          <!-- Slider 3 -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-baseline">
+              <label for="slider-upstream" class="text-xs sm:text-sm font-bold text-cwSlate">3. Upstream Friction Deflection</label>
+              <span id="val-upstream" class="font-mono text-sm font-extrabold text-cwBlue tabular-nums">22%</span>
+            </div>
+            <input id="slider-upstream" type="range" min="5" max="40" value="22" oninput="recalculatePnL()" />
+            <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+              <span>5% (Minimal UX)</span>
+              <span>40% (Full Telemetry UX)</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-snug">Eliminates inbound tickets before creation via proactive customs alerts, duty calculators &amp; payout trackers.</p>
+          </div>
+
+          <hr class="border-slate-100" />
+
+          <!-- Slider 4 -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-baseline">
+              <label for="slider-escrow" class="text-xs sm:text-sm font-bold text-cwSlate">4. Chargeback &amp; Churn Reduction</label>
+              <span id="val-escrow" class="font-mono text-sm font-extrabold text-cwBlue tabular-nums">35%</span>
+            </div>
+            <input id="slider-escrow" type="range" min="10" max="60" value="35" oninput="recalculatePnL()" />
+            <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+              <span>10%</span>
+              <span>60%</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-snug">Prevented chargeback losses and repeat-seller retention via instant automated Escrow Payout Holds.</p>
+          </div>
+        </div>
+
+        <!-- Right Column: Live Calculated Financial & Trust Outputs (7 cols) -->
+        <div class="lg:col-span-7 space-y-5">
+
+          <!-- Primary 3 KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Net Annual OpEx Savings</span>
+              <div id="kpi-opex" class="font-mono text-2xl font-extrabold text-cwSlate mt-1 tabular-nums">€8.64M</div>
+              <span class="text-xs text-emerald-600 font-semibold mt-1 inline-block">Direct CS cost reduction</span>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Protected GMV &amp; Chargebacks</span>
+              <div id="kpi-gmv" class="font-mono text-2xl font-extrabold text-emerald-600 mt-1 tabular-nums">€4.97M</div>
+              <span class="text-xs text-slate-500 font-medium mt-1 inline-block">Saved LTV &amp; dispute fees</span>
+            </div>
+
+            <div class="bg-cwBlue rounded-2xl border border-cwBlueDark p-4 shadow-md text-white">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-blue-200 block">Total Contribution Margin</span>
+              <div id="kpi-total" class="font-mono text-2xl font-extrabold text-white mt-1 tabular-nums">+€13.61M</div>
+              <span class="text-xs text-blue-100 font-medium mt-1 inline-block">Combined annual P&amp;L lift</span>
+            </div>
+          </div>
+
+          <!-- Secondary Efficiency & Trust Metrics -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Blended Cost-per-Contact</span>
+                <div class="flex items-baseline gap-2 mt-1">
+                  <span class="font-mono text-sm line-through text-slate-400 tabular-nums">€14.50</span>
+                  <span class="text-slate-400">→</span>
+                  <span id="kpi-cpc" class="font-mono text-xl font-extrabold text-cwBlue tabular-nums">€5.12</span>
+                </div>
+                <span id="kpi-cpc-drop" class="text-xs font-semibold text-emerald-600">-64.7% unit cost per inquiry</span>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-cwBlueSoft text-cwBlue flex items-center justify-center font-mono font-bold text-sm">
+                CPC
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">High-AOV Trust Protection Score</span>
+                <div class="flex items-baseline gap-2 mt-1">
+                  <span id="kpi-trust" class="font-mono text-xl font-extrabold text-emerald-600 tabular-nums">94 / 100</span>
+                  <span id="kpi-trust-label" class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Optimal Guardrail</span>
+                </div>
+                <span id="kpi-human-share" class="text-xs text-slate-500">100% of disputes &gt;€500 get human care</span>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-mono font-bold text-sm">
+                LTV
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual Breakdown Chart (Contact Mix & Financial Waterfall) -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-extrabold uppercase tracking-wider text-cwSlate">Annual Contact Mix Redistribution (1.20M Inquiries)</h4>
+              <span class="font-mono text-xs text-slate-500 tabular-nums" id="chart-total-label">1,200,000 total</span>
+            </div>
+
+            <!-- Stacked Horizontal Bar -->
+            <div class="w-full h-7 rounded-xl overflow-hidden flex bg-slate-100 border border-slate-200">
+              <div id="bar-upstream" style="width: 22%" class="bg-emerald-500 transition-all duration-300 flex items-center justify-center text-[10px] font-mono font-bold text-white" title="Upstream Deflected">
+                22%
+              </div>
+              <div id="bar-ai" style="width: 41%" class="bg-cwBlue transition-all duration-300 flex items-center justify-center text-[10px] font-mono font-bold text-white" title="AI Instant Self-Serve">
+                41%
+              </div>
+              <div id="bar-human" style="width: 37%" class="bg-slate-800 transition-all duration-300 flex items-center justify-center text-[10px] font-mono font-bold text-white" title="Human Specialist + Co-Pilot">
+                37%
+              </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs pt-1">
+              <div class="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 mt-1 shrink-0"></span>
+                <div>
+                  <div class="font-bold text-cwSlate">Upstream Deflected</div>
+                  <div id="leg-upstream" class="font-mono text-slate-600 tabular-nums">264,000 tickets (€0)</div>
+                </div>
+              </div>
+              <div class="flex items-start gap-2 p-2.5 rounded-xl bg-cwBlueSoft/70 border border-blue-100">
+                <span class="w-2.5 h-2.5 rounded-sm bg-cwBlue mt-1 shrink-0"></span>
+                <div>
+                  <div class="font-bold text-cwSlate">AI Self-Serve (€0.35)</div>
+                  <div id="leg-ai" class="font-mono text-slate-600 tabular-nums">486,720 tickets (€0.17M)</div>
+                </div>
+              </div>
+              <div class="flex items-start gap-2 p-2.5 rounded-xl bg-slate-100 border border-slate-200">
+                <span class="w-2.5 h-2.5 rounded-sm bg-slate-800 mt-1 shrink-0"></span>
+                <div>
+                  <div class="font-bold text-cwSlate">Human + Co-Pilot</div>
+                  <div id="leg-human" class="font-mono text-slate-600 tabular-nums">449,280 tickets (€5.98M)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Executive Takeaway Box -->
+          <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-cwBlue">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-blue-400 mb-1">Principal PM Strategic Takeaway</div>
+            <p id="pnl-takeaway" class="text-xs sm:text-sm text-slate-200 leading-relaxed">
+              Setting the High-AOV Guardrail at <strong class="text-white">€500</strong> ensures zero collector disputes on high-value objects get trapped in bot loops, while <strong class="text-white">52% Tier-1 AI automation</strong> and <strong class="text-white">22% upstream deflection</strong> self-fund a faster, Co-Pilot-equipped specialist dispute team—delivering <strong class="text-emerald-400">+€13.61M</strong> in annual Contribution Margin lift.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Subtle Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <span>Prepared by <strong class="text-cwSlate">Marina Riakhovskaya</strong> · Principal Product Manager (Customer Service) Case Study</span>
+      <span class="font-mono text-[11px]">Evidence Base: 18,400+ Catawiki VoC Reviews (2023–2026)</span>
+    </div>
+  </footer>
+
+  <!-- Interactive Simulation & P&L Logic -->
+  <script>
+    // =========================================================================
+    // SCENARIO DATA (AS-IS vs. TO-BE)
+    // =========================================================================
+    const SCENARIOS = {
+      A: {
+        badgeText: 'High-AOV Guardrail Triggered',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        telemetry: [
+          { label: 'LOT', value: '#CW-88412 (€1,450)' },
+          { label: 'ESCROW', value: 'HOLD PLACED', highlight: 'text-emerald-400' },
+          { label: 'RISK', value: 'HIGH (Damage + AOV)', highlight: 'text-amber-400' },
+          { label: 'ROUTE', value: 'Senior Specialist (8s)', highlight: 'text-blue-400' }
+        ],
+        asis: [
+          { sender: 'user', time: '14:02', text: 'My vintage Omega watch (€1,450) just arrived and the crystal glass is cracked! Please freeze the seller payment immediately.' },
+          { sender: 'bot', time: '14:02', text: 'Hi! I can help with delivery questions. Please enter your 8-digit Order Number to check your parcel status.' },
+          { sender: 'user', time: '14:03', text: 'I opened this chat FROM the order page! Order #CW-88412. The glass is shattered. Stop the seller payout!' },
+          { sender: 'bot', time: '14:03', text: 'Thanks! According to tracking, your parcel was delivered today. If you are unhappy with an item, please read our Buyer Protection Policy here: help.catawiki.com/returns' },
+          { sender: 'user', time: '14:04', text: 'Are you kidding me?! Connect me to a human agent right now or I am filing a chargeback with Amex.' },
+          { sender: 'bot', time: '14:04', text: 'I didn’t quite catch that. Would you like to: [1] Track a parcel [2] Ask about bidding [3] Payment methods?' },
+          { sender: 'system-bad', time: '72h later', text: '⚠ Automated 3-day payout timer expired. €1,450 released to seller while ticket sat unassigned in general queue.' }
+        ],
+        asisOutcome: {
+          resolution: '4.5 Days (Unresolved)',
+          financial: '-€1,475 Chargeback + Fee',
+          trustpilot: '1★ Review ("Bot trap, zero help")',
+          aht: '28 mins (Cold rework)'
+        },
+        tobe: [
+          { sender: 'user', time: '14:02', text: 'My vintage Omega watch (€1,450) just arrived and the crystal glass is cracked! Please freeze the seller payment immediately.' },
+          { sender: 'system-good', time: '14:02 · 0.4s', text: '⚡ Self-Aware Guardrail: Lot value €1,450 (>€500 threshold) + damage intent detected. Seller payout #CW-88412 automatically placed on ESCROW HOLD.' },
+          { sender: 'ai', time: '14:02', text: 'I’m very sorry your Omega arrived with a cracked crystal, Alex. Because this is a high-value lot (€1,450), I have immediately paused the seller’s payout so your funds are 100% protected.\n\nUpload 2 quick photos (outer box + watch crystal) below and I will connect you directly to a Senior Watch Specialist—no repeating details.' },
+          { sender: 'user', time: '14:03', text: '📎 Uploaded: outer_box_dent.jpg, cracked_crystal.jpg' },
+          { sender: 'ai', time: '14:03', text: 'Photos verified. Connecting you now to Elena (Senior Dispute Specialist). Your complete case file is already on her screen.' },
+          {
+            sender: 'copilot',
+            title: 'AGENT CO-PILOT BRIEF · AUTO-GENERATED FOR SPECIALIST',
+            bullets: [
+              'Action Taken: Seller payout (€1,305 net) frozen via Escrow API; 3-day auto-complete paused.',
+              'CV Evidence Check: Outer parcel impact + crystal fracture confirmed (96% confidence).',
+              'Recommended Remedy: Approve insured transit claim or buyer-approved €180 watchmaker repair credit.'
+            ]
+          }
+        ],
+        tobeOutcome: {
+          resolution: '8 Seconds to Safe Hold',
+          financial: '€1,450 GMV Protected',
+          trustpilot: '4.8 / 5 Projected CSAT',
+          aht: '6 mins (-78% via Co-Pilot)'
+        }
+      },
+
+      B: {
+        badgeText: 'Proactive Telemetry + Protection',
+        badgeClass: 'bg-blue-100 text-cwBlue border-blue-200',
+        telemetry: [
+          { label: 'LOT', value: '#CW-91044 (€420)' },
+          { label: 'CARRIER', value: 'Customs Hold (Madrid)', highlight: 'text-amber-400' },
+          { label: 'TIMER', value: 'Extended +7 Days', highlight: 'text-emerald-400' },
+          { label: 'ROUTE', value: 'AI Guided + Optional Call', highlight: 'text-blue-400' }
+        ],
+        asis: [
+          { sender: 'user', time: '10:15', text: 'Correos Spain is asking me for €94 in customs fees for my €420 art print! I already paid Catawiki fees.' },
+          { sender: 'bot', time: '10:15', text: 'Your parcel #CW-91044 is currently in transit. Standard international shipping takes 5–10 business days.' },
+          { sender: 'user', time: '10:16', text: 'It’s not in transit, it’s stuck in customs! And the app says my order will auto-complete tomorrow!' },
+          { sender: 'bot', time: '10:16', text: 'Buyers are responsible for applicable import taxes. View our Shipping FAQ here: help.catawiki.com/customs' },
+          { sender: 'system-bad', time: '24h later', text: '⚠ Buyer refuses delivery due to fear of losing dispute window; parcel returned & buyer leaves 1★ Trustpilot review.' }
+        ],
+        asisOutcome: {
+          resolution: '6 Days (Parcel Returned)',
+          financial: '-€68 Return Shipping Loss',
+          trustpilot: '1★ Review ("Hidden fees")',
+          aht: '22 mins (3 repeat tickets)'
+        },
+        tobe: [
+          { sender: 'user', time: '10:15', text: 'Correos Spain is asking me for €94 in customs fees for my €420 art print! I already paid Catawiki fees.' },
+          { sender: 'system-good', time: '10:15 · 0.6s', text: '⚡ Carrier API Sync: Shipment #CW-91044 verified at Madrid Barajas Customs (UK → ES non-IOSS lot >€150). Auto-completion timer paused (+7 days).' },
+          { sender: 'ai', time: '10:15', text: 'I see your €420 print shipped from a UK seller is awaiting Spanish import clearance. Because the lot exceeds €150, Spanish VAT (21% = €88.20) + carrier handling (€5.80) is collected locally by Correos rather than at checkout.\n\nTo make sure you never lose Buyer Protection while waiting, I have automatically extended your delivery confirmation window by +7 days.' },
+          { sender: 'user', time: '10:16', text: 'Oh, thank you! Knowing the timer is paused makes me feel much safer paying Correos now.' },
+          { sender: 'ai', time: '10:16', text: 'You’re all set. Once you pay the Correos link, clearance typically completes within 24 hours. Need a customs invoice PDF for Correos? [Download Pre-Filled Invoice]' }
+        ],
+        tobeOutcome: {
+          resolution: '90 Seconds (Self-Served)',
+          financial: '€420 Order Saved',
+          trustpilot: '4.9 / 5 Projected CSAT',
+          aht: '0 mins (Zero human touch)'
+        }
+      },
+
+      C: {
+        badgeText: '1-Turn Autonomous Resolution',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        telemetry: [
+          { label: 'LOT', value: '#CW-77319 (€85)' },
+          { label: 'DELIVERY', value: 'Verified 48h Ago', highlight: 'text-emerald-400' },
+          { label: 'RISK', value: 'LOW (Routine Inquiry)', highlight: 'text-blue-400' },
+          { label: 'ROUTE', value: '1-Turn AI Auto-Close', highlight: 'text-emerald-400' }
+        ],
+        asis: [
+          { sender: 'user', time: '09:40', text: 'Hi, my vinyl record (€85) was delivered 2 days ago. When do I get my payout?' },
+          { sender: 'bot', time: '09:40', text: 'Welcome to Catawiki Seller Support! Please select a topic: [1] Listing an object [2] Shipping labels [3] Account settings.' },
+          { sender: 'user', time: '09:41', text: 'Payouts! Where is my money for order #CW-77319?' },
+          { sender: 'bot', time: '09:41', text: 'Payouts are processed after delivery is confirmed. Please check your Seller Dashboard or wait 3–5 business days.' },
+          { sender: 'user', time: '09:42', text: 'I want an exact date. Talk to agent.' },
+          { sender: 'system-bad', time: '18h later', text: '⚠ Low-value routine ticket enters human queue, costing €14.50 to answer a €85 lot status check.' }
+        ],
+        asisOutcome: {
+          resolution: '18 Hours (Queue Delay)',
+          financial: '-€14.50 Ticket Cost (17% of AOV)',
+          trustpilot: '3.2 / 5 Frustrated Seller',
+          aht: '11 mins (Manual lookup)'
+        },
+        tobe: [
+          { sender: 'user', time: '09:40', text: 'Hi, my vinyl record (€85) was delivered 2 days ago. When do I get my payout?' },
+          { sender: 'system-good', time: '09:40 · 0.3s', text: '⚡ Payout Ledger Sync: DHL delivery confirmed Nov 16, 14:12 CET. No buyer claim open. Stripe SEPA payout batch scheduled.' },
+          { sender: 'ai', time: '09:40', text: 'Your buyer’s 3-day inspection window for Lot #CW-77319 (€85.00) closes today at 14:12 CET with zero issues reported.\n\n• Net Payout Amount: €74.38 (after 12.5% seller fee)\n• Automated SEPA Release: Today, Nov 18 at 15:00 CET\n• Expected Bank Arrival: Tomorrow, Nov 19 by 11:00 CET' },
+          { sender: 'user', time: '09:41', text: 'Super clear, thanks for the exact time!' }
+        ],
+        tobeOutcome: {
+          resolution: '12 Seconds (1-Turn AI)',
+          financial: '€0.35 Cost (97.6% Savings)',
+          trustpilot: '4.9 / 5 Projected CSAT',
+          aht: '0 mins (Verified resolved)'
+        }
+      }
+    };
+
+    let currentScenario = 'A';
+    let playbackTimers = [];
+
+    // =========================================================================
+    // VIEW SWITCHING & ARCHITECTURE DRAWER
+    // =========================================================================
+    function switchView(view) {
+      const simSection = document.getElementById('view-sim');
+      const pnlSection = document.getElementById('view-pnl');
+      const tabSim = document.getElementById('tab-sim');
+      const tabPnl = document.getElementById('tab-pnl');
+
+      if (view === 'sim') {
+        simSection.classList.remove('hidden');
+        pnlSection.classList.add('hidden');
+        tabSim.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-cwBlue shadow-sm';
+        tabPnl.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-cwSlate';
+        tabSim.setAttribute('aria-selected', 'true');
+        tabPnl.setAttribute('aria-selected', 'false');
+      } else {
+        simSection.classList.add('hidden');
+        pnlSection.classList.remove('hidden');
+        tabPnl.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white text-cwBlue shadow-sm';
+        tabSim.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 hover:text-cwSlate';
+        tabPnl.setAttribute('aria-selected', 'true');
+        tabSim.setAttribute('aria-selected', 'false');
+        recalculatePnL();
+      }
+    }
+
+    function toggleArchitecture() {
+      const panel = document.getElementById('arch-panel');
+      panel.classList.toggle('hidden');
+    }
+
+    // =========================================================================
+    // SCENARIO RENDERING & STEP-BY-STEP PLAYBACK
+    // =========================================================================
+    function clearPlaybackTimers() {
+      playbackTimers.forEach(id => clearTimeout(id));
+      playbackTimers = [];
+    }
+
+    function selectScenario(key) {
+      currentScenario = key;
+      ['A', 'B', 'C'].forEach(k => {
+        const btn = document.getElementById('pill-' + k);
+        if (k === key) {
+          btn.className = 'scenario-pill text-left px-3.5 py-2.5 rounded-xl border-2 border-cwBlue bg-cwBlueSoft/70 transition-all';
+        } else {
+          btn.className = 'scenario-pill text-left px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all';
+        }
+      });
+      instantView();
+    }
+
+    function renderTelemetry(data) {
+      const bar = document.getElementById('telemetry-bar');
+      bar.innerHTML = data.telemetry.map(item => `
+        <span>${item.label}: <strong class="${item.highlight || 'text-white'}">${item.value}</strong></span>
+      `).join('');
+
+      const badge = document.getElementById('tobe-badge');
+      badge.textContent = data.badgeText;
+      badge.className = `px-2.5 py-1 rounded-lg text-[11px] font-bold border shrink-0 ${data.badgeClass}`;
+    }
+
+    function createMessageHTML(msg) {
+      if (msg.sender === 'user') {
+        return `
+          <div class="flex flex-col items-end msg-animate">
+            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-cwSlate text-white px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm whitespace-pre-line">${escapeHTML(msg.text)}</div>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">Customer · ${msg.time}</span>
+          </div>
+        `;
+      }
+      if (msg.sender === 'bot') {
+        return `
+          <div class="flex flex-col items-start msg-animate">
+            <div class="max-w-[88%] rounded-2xl rounded-tl-sm bg-white border border-slate-200 text-slate-700 px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm whitespace-pre-line">${escapeHTML(msg.text)}</div>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">Legacy FAQ Bot · ${msg.time}</span>
+          </div>
+        `;
+      }
+      if (msg.sender === 'ai') {
+        return `
+          <div class="flex flex-col items-start msg-animate">
+            <div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-cwBlueSoft/80 border border-blue-200 text-cwSlate px-3.5 py-2.5 text-xs sm:text-[13px] leading-relaxed shadow-sm whitespace-pre-line">${escapeHTML(msg.text)}</div>
+            <span class="text-[10px] font-mono text-cwBlue font-semibold mt-1">Catawiki Self-Aware AI · ${msg.time}</span>
+          </div>
+        `;
+      }
+      if (msg.sender === 'system-bad') {
+        return `
+          <div class="rounded-xl bg-red-100/90 border border-red-300 px-3 py-2 text-xs font-medium text-red-900 msg-animate">
+            <span class="font-mono text-[10px] font-bold uppercase block text-red-700 mb-0.5">${msg.time}</span>
+            ${escapeHTML(msg.text)}
+          </div>
+        `;
+      }
+      if (msg.sender === 'system-good') {
+        return `
+          <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-medium text-emerald-950 msg-animate">
+            <span class="font-mono text-[10px] font-bold uppercase block text-emerald-700 mb-0.5">${msg.time}</span>
+            ${escapeHTML(msg.text)}
+          </div>
+        `;
+      }
+      if (msg.sender === 'copilot') {
+        return `
+          <div class="rounded-xl bg-slate-900 text-white border border-slate-700 p-3 text-xs msg-animate shadow-md">
+            <div class="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>${escapeHTML(msg.title)}</span>
+            </div>
+            <ul class="space-y-1 text-slate-200 list-disc pl-4">
+              ${msg.bullets.map(b => `<li>${escapeHTML(b)}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+      return '';
+    }
+
+    function renderOutcomes(data, visible) {
+      const asisEl = document.getElementById('outcome-asis');
+      const tobeEl = document.getElementById('outcome-tobe');
+
+      if (!visible) {
+        asisEl.innerHTML = `<div class="text-xs font-mono text-slate-400 py-2">Simulation running… awaiting final business impact.</div>`;
+        tobeEl.innerHTML = `<div class="text-xs font-mono text-slate-400 py-2">Simulation running… awaiting final business impact.</div>`;
+        return;
+      }
+
+      asisEl.innerHTML = `
+        <div class="text-[10px] font-extrabold uppercase tracking-wider text-red-700 mb-2">As-Is Business Outcome</div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-white/90 rounded-lg p-2 border border-red-100">
+            <span class="text-[10px] text-slate-500 block">Resolution Time</span>
+            <strong class="font-mono text-red-700">${data.asisOutcome.resolution}</strong>
+          </div>
+          <div class="bg-white/90 rounded-lg p-2 border border-red-100">
+            <span class="text-[10px] text-slate-500 block">Financial Impact</span>
+            <strong class="font-mono text-red-700">${data.asisOutcome.financial}</strong>
+          </div>
+          <div class="bg-white/90 rounded-lg p-2 border border-red-100">
+            <span class="text-[10px] text-slate-500 block">Trustpilot / CSAT</span>
+            <strong class="text-slate-800">${data.asisOutcome.trustpilot}</strong>
+          </div>
+          <div class="bg-white/90 rounded-lg p-2 border border-red-100">
+            <span class="text-[10px] text-slate-500 block">Agent Handle Time</span>
+            <strong class="font-mono text-slate-800">${data.asisOutcome.aht}</strong>
+          </div>
+        </div>
+      `;
+
+      tobeEl.innerHTML = `
+        <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 mb-2">To-Be Business Outcome</div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-white/95 rounded-lg p-2 border border-emerald-200">
+            <span class="text-[10px] text-slate-500 block">Time to Safe Action</span>
+            <strong class="font-mono text-emerald-700">${data.tobeOutcome.resolution}</strong>
+          </div>
+          <div class="bg-white/95 rounded-lg p-2 border border-emerald-200">
+            <span class="text-[10px] text-slate-500 block">Financial Protection</span>
+            <strong class="font-mono text-emerald-700">${data.tobeOutcome.financial}</strong>
+          </div>
+          <div class="bg-white/95 rounded-lg p-2 border border-emerald-200">
+            <span class="text-[10px] text-slate-500 block">Projected CSAT</span>
+            <strong class="text-cwBlue">${data.tobeOutcome.trustpilot}</strong>
+          </div>
+          <div class="bg-white/95 rounded-lg p-2 border border-emerald-200">
+            <span class="text-[10px] text-slate-500 block">Agent Handle Time</span>
+            <strong class="font-mono text-cwSlate">${data.tobeOutcome.aht}</strong>
+          </div>
+        </div>
+      `;
+    }
+
+    function instantView() {
+      clearPlaybackTimers();
+      const data = SCENARIOS[currentScenario];
+      renderTelemetry(data);
+
+      const chatAsis = document.getElementById('chat-asis');
+      const chatTobe = document.getElementById('chat-tobe');
+
+      chatAsis.innerHTML = data.asis.map(createMessageHTML).join('');
+      chatTobe.innerHTML = data.tobe.map(createMessageHTML).join('');
+      renderOutcomes(data, true);
+    }
+
+    function resetSimulation() {
+      clearPlaybackTimers();
+      const data = SCENARIOS[currentScenario];
+      renderTelemetry(data);
+      document.getElementById('chat-asis').innerHTML = `
+        <div class="h-full flex items-center justify-center text-center p-6 text-xs text-slate-400">
+          Click <strong class="text-cwSlate mx-1">Play Simulation</strong> to watch the step-by-step comparison or <strong class="text-cwSlate mx-1">Instant View</strong> to inspect immediately.
+        </div>
+      `;
+      document.getElementById('chat-tobe').innerHTML = `
+        <div class="h-full flex items-center justify-center text-center p-6 text-xs text-slate-400">
+          Ready to run Self-Aware AI &amp; Escrow Guardrail simulation for Scenario ${currentScenario}.
+        </div>
+      `;
+      renderOutcomes(data, false);
+    }
+
+    function playSimulation() {
+      clearPlaybackTimers();
+      const data = SCENARIOS[currentScenario];
+      renderTelemetry(data);
+
+      const chatAsis = document.getElementById('chat-asis');
+      const chatTobe = document.getElementById('chat-tobe');
+      chatAsis.innerHTML = '';
+      chatTobe.innerHTML = '';
+      renderOutcomes(data, false);
+
+      const maxSteps = Math.max(data.asis.length, data.tobe.length);
+      for (let i = 0; i < maxSteps; i++) {
+        const timer = setTimeout(() => {
+          if (data.asis[i]) {
+            chatAsis.insertAdjacentHTML('beforeend', createMessageHTML(data.asis[i]));
+            chatAsis.scrollTop = chatAsis.scrollHeight;
+          }
+          if (data.tobe[i]) {
+            chatTobe.insertAdjacentHTML('beforeend', createMessageHTML(data.tobe[i]));
+            chatTobe.scrollTop = chatTobe.scrollHeight;
+          }
+          if (i === maxSteps - 1) {
+            renderOutcomes(data, true);
+          }
+        }, i * 650);
+        playbackTimers.push(timer);
+      }
+    }
+
+    function escapeHTML(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // =========================================================================
+    // VIEW 2: UNIT ECONOMICS & P&L CALCULATOR LOGIC
+    // =========================================================================
+    function recalculatePnL() {
+      const tier1Pct = parseInt(document.getElementById('slider-tier1').value, 10);
+      const aovThreshold = parseInt(document.getElementById('slider-aov').value, 10);
+      const upstreamPct = parseInt(document.getElementById('slider-upstream').value, 10);
+      const escrowPct = parseInt(document.getElementById('slider-escrow').value, 10);
+
+      // Update readout badges
+      document.getElementById('val-tier1').textContent = tier1Pct + '%';
+      document.getElementById('val-aov').textContent = '€' + aovThreshold.toLocaleString('en-US');
+      document.getElementById('val-upstream').textContent = upstreamPct + '%';
+      document.getElementById('val-escrow').textContent = escrowPct + '%';
+
+      // Baseline constants
+      const totalContacts = 1200000;
+      const baselineHumanCost = 14.50;
+      const aiCost = 0.35;
+      // Co-pilot reduces remaining human ticket handle cost by 18% (€14.50 -> €11.89)
+      const copilotHumanCost = 11.89;
+      const baselineOpEx = totalContacts * baselineHumanCost; // €17.40M
+
+      // 1. Upstream deflection removes contacts completely (€0 cost)
+      const upstreamDeflected = Math.round(totalContacts * (upstreamPct / 100));
+      const remainingContacts = totalContacts - upstreamDeflected;
+
+      // 2. High-AOV Guardrail reserves a trust-protected slice of disputes for human specialists
+      // Lower AOV threshold = more disputes protected by human specialists (reduces effective AI cap slightly)
+      const highAovShare = Math.max(0.06, Math.min(0.32, (1650 - aovThreshold) / 4500));
+      const maxAutomatableShare = 1 - highAovShare;
+      const effectiveAiRateOnRemaining = Math.min(tier1Pct / 100, maxAutomatableShare);
+
+      const aiResolved = Math.round(remainingContacts * effectiveAiRateOnRemaining);
+      const humanHandled = remainingContacts - aiResolved;
+
+      // New OpEx
+      const newOpEx = (aiResolved * aiCost) + (humanHandled * copilotHumanCost);
+      const opexSavings = Math.max(0, baselineOpEx - newOpEx);
+
+      // Protected GMV & Chargebacks (€14.2M baseline exposure scaled by escrow hold + guardrail tightness)
+      const guardrailMultiplier = 0.75 + ((1500 - aovThreshold) / 1350) * 0.45; // 0.75x to 1.20x
+      const baselineRiskExposure = 14200000;
+      const protectedGmv = baselineRiskExposure * (escrowPct / 100) * guardrailMultiplier;
+
+      const totalMarginImpact = opexSavings + protectedGmv;
+      const blendedCpc = newOpEx / totalContacts;
+      const cpcDropPct = ((baselineHumanCost - blendedCpc) / baselineHumanCost) * 100;
+
+      // High-AOV Trust Protection Score (0-100)
+      const trustScore = Math.min(99, Math.max(58, Math.round(62 + ((1500 - aovThreshold) / 1350) * 24 + (escrowPct / 60) * 13)));
+
+      // Update KPI Cards
+      document.getElementById('kpi-opex').textContent = '€' + (opexSavings / 1000000).toFixed(2) + 'M';
+      document.getElementById('kpi-gmv').textContent = '€' + (protectedGmv / 1000000).toFixed(2) + 'M';
+      document.getElementById('kpi-total').textContent = '+€' + (totalMarginImpact / 1000000).toFixed(2) + 'M';
+
+      document.getElementById('kpi-cpc').textContent = '€' + blendedCpc.toFixed(2);
+      document.getElementById('kpi-cpc-drop').textContent = `-${cpcDropPct.toFixed(1)}% unit cost per inquiry`;
+
+      document.getElementById('kpi-trust').textContent = `${trustScore} / 100`;
+      const trustLabel = document.getElementById('kpi-trust-label');
+      if (trustScore >= 85) {
+        trustLabel.textContent = 'Optimal Guardrail';
+        trustLabel.className = 'text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+      } else if (trustScore >= 72) {
+        trustLabel.textContent = 'Balanced';
+        trustLabel.className = 'text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-cwBlue';
+      } else {
+        trustLabel.textContent = 'High Bot Exposure';
+        trustLabel.className = 'text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800';
+      }
+      document.getElementById('kpi-human-share').textContent = `100% of disputes >€${aovThreshold.toLocaleString('en-US')} get human care`;
+
+      // Update Stacked Bar Chart
+      const upShare = Math.round((upstreamDeflected / totalContacts) * 100);
+      const aiShare = Math.round((aiResolved / totalContacts) * 100);
+      const humShare = Math.max(0, 100 - upShare - aiShare);
+
+      const barUp = document.getElementById('bar-upstream');
+      const barAi = document.getElementById('bar-ai');
+      const barHum = document.getElementById('bar-human');
+
+      barUp.style.width = upShare + '%';
+      barUp.textContent = upShare >= 8 ? upShare + '%' : '';
+      barAi.style.width = aiShare + '%';
+      barAi.textContent = aiShare >= 8 ? aiShare + '%' : '';
+      barHum.style.width = humShare + '%';
+      barHum.textContent = humShare >= 8 ? humShare + '%' : '';
+
+      document.getElementById('leg-upstream').textContent = `${upstreamDeflected.toLocaleString('en-US')} tickets (€0)`;
+      document.getElementById('leg-ai').textContent = `${aiResolved.toLocaleString('en-US')} tickets (€${((aiResolved * aiCost) / 1000000).toFixed(2)}M)`;
+      document.getElementById('leg-human').textContent = `${humanHandled.toLocaleString('en-US')} tickets (€${((humanHandled * copilotHumanCost) / 1000000).toFixed(2)}M)`;
+
+      // Update Dynamic Takeaway
+      document.getElementById('pnl-takeaway').innerHTML = `
+        Setting the High-AOV Guardrail at <strong class="text-white">€${aovThreshold.toLocaleString('en-US')}</strong> ensures collector disputes on high-value objects bypass bot loops, while <strong class="text-white">${tier1Pct}% Tier-1 AI automation</strong> and <strong class="text-white">${upstreamPct}% upstream deflection</strong> self-fund a faster, Co-Pilot-equipped specialist dispute team—delivering <strong class="text-emerald-400">+€${(totalMarginImpact / 1000000).toFixed(2)}M</strong> in annual Contribution Margin lift.
+      `;
+    }
+
+    function resetSliders() {
+      document.getElementById('slider-tier1').value = 52;
+      document.getElementById('slider-aov').value = 500;
+      document.getElementById('slider-upstream').value = 22;
+      document.getElementById('slider-escrow').value = 35;
+      recalculatePnL();
+    }
+
+    // Initialize default state on load
+    window.addEventListener('DOMContentLoaded', () => {
+      instantView();
+      recalculatePnL();
+    });
+  </script>
+</body>
+</html>
